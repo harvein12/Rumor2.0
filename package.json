@@ -1,15 +1,35 @@
 {
-  "name": "exotic-premium",
-  "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "db": "node creador.js"
-  },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.8.1",
-    "express": "^4.21.2",
-    "socket.io": "^4.8.1"
-  }
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "express": "^5.2.1",
+    "nodemailer": "^8.0.1",
+    "socket.io": "^4.8.3",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0"
+  },
+  "name": "rumor-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "creador.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harvein12/Rumor-Game.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/harvein12/Rumor-Game/issues"
+  },
+  "homepage": "https://github.com/harvein12/Rumor-Game#readme"
 }

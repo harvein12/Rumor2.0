@@ -1,74 +1,42 @@
-const db = require('better-sqlite3')('juego.db');
+const fs = require('fs');
+const sqlite3 = require('sqlite3').verbose();
 
-console.log("🔥  Generando EXOTIC: Versión RED ROOM...");
+console.log("1. 🟢 Iniciando script de creación...");
 
-// 1. Reiniciar Tablas (Usuarios, Retos y CASTIGOS)
-db.exec(`
-  DROP TABLE IF EXISTS usuarios;
-  DROP TABLE IF EXISTS retos;
-  DROP TABLE IF EXISTS castigos;
-
-  CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, password TEXT, avatar TEXT);
-  CREATE TABLE retos (id INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT, nivel INTEGER, modo TEXT);
-  CREATE TABLE castigos (id INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT);
-`);
-
-// --- DICCIONARIO PROVOCATIVO ---
-
-// SUAVE (Seducción)
-const accionesSuaves = ["Recorre con la nariz", "Besa lentamente", "Acaricia con las uñas", "Sopla caliente en", "Muerde suavemente", "Lame una vez", "Dibuja círculos con la lengua en"];
-const partesSuaves = ["el cuello", "el lóbulo de la oreja", "la clavícula", "la palma de la mano", "la nuca", "el interior de la muñeca"];
-
-// HOT (Deseo)
-const accionesHot = ["Chupa con fuerza", "Aprieta firmemente", "Pasa un hielo por", "Besa con mucha lengua", "Deja un chupetón en", "Mete la mano y toca", "Nalguea en", "Pasa tu entrepierna por"];
-const partesHot = ["la cintura", "la parte interna del muslo", "el abdomen bajo", "el borde de su ropa interior", "los glúteos", "el pecho"];
-
-// EXTREME (Lujuria Total)
-const accionesExtreme = ["Venda los ojos y estimula", "Usa saliva para mojar", "Simula sexo oral en", "Muerde fuerte", "Restriega tus genitales en", "Somete contra la pared y besa", "Introduce un dedo en la boca de", "Haz un baile privado pegado a"];
-const partesExtreme = ["la entrepierna (con ropa)", "los pezones", "el bulto/zona V", "el trasero desnudo (o baja un poco la ropa)", "el perineo", "donde más le excite"];
-
-const tiempos = ["por 20 segundos", "hasta que gima", "mirando a los ojos", "mientras te graban (simulado)", "sin usar las manos"];
-
-// --- GENERADOR DE RETOS ---
-const stmtReto = db.prepare('INSERT INTO retos (texto, nivel, modo) VALUES (?, ?, ?)');
-
-function generar(nivel, modo, cantidad) {
-    let acciones = (nivel === 1) ? accionesSuaves : (nivel === 2) ? accionesHot : accionesExtreme;
-    let partes = (nivel === 1) ? partesSuaves : (nivel === 2) ? partesHot : partesExtreme;
-
-    for (let i = 0; i < cantidad; i++) {
-        const accion = acciones[Math.floor(Math.random() * acciones.length)];
-        const parte = partes[Math.floor(Math.random() * partes.length)];
-        const tiempo = tiempos[Math.floor(Math.random() * tiempos.length)];
-        
-        let texto = (modo === 'pareja') 
-            ? `${accion} ${parte} de tu pareja ${tiempo}.` 
-            : `${accion} ${parte} de {victima} ${tiempo}.`;
-        
-        stmtReto.run(texto, nivel, modo);
-    }
+// PARTE A: Crear el archivo físico a la fuerza
+try {
+    console.log("2. 🔨 Intentando crear archivo 'juego.db' vacio...");
+    fs.writeFileSync('./juego.db', ''); 
+    console.log("   ✅ ¡ÉXITO! Archivo físico creado.");
+} catch (error) {
+    console.log("   ❌ ERROR creando archivo físico:", error.message);
 }
 
-// Generamos 300 retos
-generar(1, 'pareja', 50); generar(1, 'grupo', 50);
-generar(2, 'pareja', 50); generar(2, 'grupo', 50);
-generar(3, 'pareja', 50); generar(3, 'grupo', 50);
+// PARTE B: Inyectar la estructura de la base de datos
+console.log("3. 🔌 Conectando SQLite...");
+const db = new sqlite3.Database('./juego.db', (err) => {
+    if (err) {
+        console.error("   ❌ ERROR DE CONEXIÓN:", err.message);
+    } else {
+        console.log("   ✅ Conexión establecida.");
+    }
+});
 
-// --- GENERADOR DE CASTIGOS (PENITENCIAS) ---
-const stmtCastigo = db.prepare('INSERT INTO castigos (texto) VALUES (?)');
-const listaCastigos = [
-    "Quítate una prenda de ropa (elección del grupo).",
-    "Bebe un fondo blanco (shot completo).",
-    "Deja que el grupo te escriba algo en el cuerpo.",
-    "Muestra tu historial de búsqueda del celular.",
-    "Envia un mensaje picante a quien el grupo elija.",
-    "Recibe una nalgada fuerte de cada jugador.",
-    "Baila sin música de forma sexy por 1 minuto.",
-    "Quédate en ropa interior por 2 turnos.",
-    "Deja que te pasen un hielo por la espalda (por dentro de la ropa).",
-    "Confiesa tu fantasía sexual más oscura."
-];
+db.serialize(() => {
+    console.log("4. 🏗️ Creando tablas...");
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+        usuario TEXT PRIMARY KEY,
+        email TEXT,
+        pass TEXT,
+        victorias INTEGER DEFAULT 0
+    )`);
 
-listaCastigos.forEach(c => stmtCastigo.run(c));
+    console.log("5. 👑 Insertando Admin 'harvein'...");
+    db.run(`INSERT OR IGNORE INTO usuarios (usuario, email, pass, victorias) 
+            VALUES ('harvein', 'admin@juego.com', '123456', 999)`);
+});
 
-console.log("✅ EXOTIC RED ROOM: Base de datos cargada con Retos y Castigos.");
+db.close((err) => {
+    if (err) console.error(err.message);
+    console.log("6. 🏁 FINALIZADO. Revisa tu carpeta.");
+});
