@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rumor Toxic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- ESTILOS ORIGINALES Y ANIMACIONES --- */
+        :root { --bg-body: #0f0f13; --bg-panel: #1a1a20; --bg-card: #23232a; --primary: #ff7e5f; --accent-gold: #feb47b; --accent-toxic: #00d2d3; --text-main: #ffffff; --text-sec: #a0a0b0; --radius: 16px; --border: 1px solid rgba(255,255,255,0.08); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; } 
+        body { background: var(--bg-body); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+        
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f0f13; z-index: 99999; display: flex; justify-content: center; align-items: center; transition: opacity 0.8s ease-out; flex-direction: column; }
+        .loader-content { text-align: center; width: 80%; max-width: 300px; }
+        .toxic-logo-anim { font-size: 80px; margin-bottom: 20px; animation: pulseToxic 2s infinite; filter: drop-shadow(0 0 15px var(--accent-toxic)); }
+        .glitch-text { font-size: 24px; margin: 0 0 30px 0; letter-spacing: 2px; font-weight: 800; color: white; }
+        .loading-bar-container { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
+        .loading-bar { width: 100%; height: 100%; background: linear-gradient(90deg, var(--accent-toxic), var(--primary)); position: absolute; left: -100%; animation: loadBar 2s infinite; }
+        .loading-status { color: var(--text-sec); font-size: 12px; margin-top: 10px; font-family: monospace; animation: blink 1s infinite; }
+        @keyframes pulseToxic { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; filter: drop-shadow(0 0 25px var(--primary)); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes loadBar { 0% { left: -100%; } 50% { left: 0; } 100% { left: 100%; } }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-150px) scale(1.5); } }
+
+        input, textarea { width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: var(--border); border-radius: var(--radius); color: white; margin-bottom: 15px; outline:none; font-family: inherit; resize: none; transition: 0.3s; font-size: 16px; }
+        input:focus, textarea:focus { border-color: var(--primary); background: rgba(255,255,255,0.1); }
+        .btn { padding: 14px; border-radius: var(--radius); border: none; cursor: pointer; font-weight: 700; width: 100%; transition: 0.2s; }
+        .btn-p { background: linear-gradient(135deg, var(--primary), var(--accent-gold)); color: #1a1a20; }
+        .btn-p:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,126,95,0.3); }
+        .btn-s { background: rgba(255,255,255,0.05); color: var(--text-sec); } .btn-s:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 4000; padding: 10px; padding-bottom: env(safe-area-inset-bottom); }
+        .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 24px; width: 100%; max-width: 480px; border: var(--border); text-align: center; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+
+        .chat-label { font-size: 11px; color: var(--accent-toxic); font-weight: 800; margin-left: 2px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; display: block; }
+        .social-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: var(--border); padding-bottom: 10px; overflow-x: auto; margin-top: 10px; } 
+        .tab-btn { background: none; border: none; color: var(--text-sec); padding: 5px 15px; cursor: pointer; font-weight: bold; font-size: 14px; white-space: nowrap; } 
+        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        
+        #notification-bar { position: fixed; top: -100px; left: 0; width: 100%; background: #23232a; border-bottom: 2px solid var(--accent-toxic); color: white; padding: 15px 20px; z-index: 5000; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 20px rgba(0,0,0,0.8); transition: top 0.5s ease-in-out; padding-top: calc(15px + env(safe-area-inset-top)); }
+        #notification-bar.show { top: 0; }
+
+        @media (max-width: 600px) { .modal-overlay { padding: 0; align-items: flex-end; } .modal-box { max-width: 100%; width: 100%; border-radius: 24px 24px 0 0; max-height: 95vh; padding: 25px; padding-bottom: calc(25px + env(safe-area-inset-bottom)); } }
+        #pantalla-auth { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 3000; display: flex; justify-content: center; align-items: center; padding-bottom: env(safe-area-inset-bottom); }
+        .auth-box { background: var(--bg-panel); padding: 40px; border-radius: 24px; width: 90%; max-width: 400px; text-align: center; border: var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        #sidebar { width: 260px; background: var(--bg-panel); padding: 30px; display: flex; flex-direction: column; border-right: var(--border); }
+        #main-content { flex: 1; padding: 40px; overflow-y: auto; background: radial-gradient(circle at top right, rgba(255,126,95,0.05), transparent 40%); padding-bottom: 100px; position: relative; }
+        .mobile-bar { display: none; } 
+        @media (max-width: 900px) { 
+            #sidebar { display: none; } 
+            #main-content { padding: 20px; padding-bottom: calc(90px + env(safe-area-inset-bottom)); } 
+            .mobile-bar { display: flex !important; position: fixed; bottom: 0; left: 0; width: 100%; height: calc(70px + env(safe-area-inset-bottom)); background: var(--bg-panel); border-top: var(--border); align-items: flex-start; padding-top: 15px; justify-content: space-around; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); } 
+            .mb-item { display: flex; flex-direction: column; align-items: center; color: var(--text-sec); font-size: 10px; gap: 4px; } .mb-item.active { color: var(--primary); } .mb-item i { font-size: 20px; } 
+        }
+        .nav-item { padding: 15px; color: var(--text-sec); cursor: pointer; border-radius: var(--radius); margin-bottom: 5px; display: flex; gap: 10px; font-weight: 500; } .nav-item.active, .nav-item:hover { background: rgba(255,126,95,0.1); color: var(--primary); }
+        .cards-grid, .room-grid, .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; } .card { background: var(--bg-card); border: var(--border); padding: 20px; border-radius: var(--radius); transition: 0.3s; cursor: pointer; text-align: center; } .card:hover { border-color: var(--primary); transform: translateY(-5px); }
+        .game-cover { height: 180px; background: #000; border-radius: var(--radius); display: flex; justify-content: center; align-items: center; font-size: 50px; margin-bottom: 15px; } .lib-rumor { background: linear-gradient(45deg, #ff7e5f, #23232a); color: white; } .lib-secret { background: radial-gradient(circle, #2c3e50, #0f0f13); color: #555; }
+        .library-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; max-width: 1000px; margin: 0 auto; }
+        .lobby-players { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin: 30px 0; } .player-tile { background: var(--bg-card); padding: 15px; border-radius: 16px; border: var(--border); text-align: center; width: 110px; position: relative; } .pt-crown { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 20px; } .pt-avatar { font-size: 35px; margin-bottom: 10px; }
+        .hist-item { display: flex; justify-content: space-between; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 8px; } .res-win { color: var(--accent-toxic); } .res-loss { color: #ff7675; }
+        #toast-box { position: fixed; bottom: 80px; right: 20px; z-index: 5000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; padding-bottom: env(safe-area-inset-bottom); } .toast { background: var(--bg-panel); padding: 10px 20px; border-radius: 12px; border: 1px solid var(--primary); color: white; animation: slideIn 0.3s; } @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        .section { display: none; animation: fadeIn 0.3s; } .section.active { display: block; } @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+        .game-header-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 10px 20px; border-radius: 50px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .score-pill { font-size: 14px; color: var(--accent-gold); font-weight: bold; }
+        .progress-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent-gold)); width: 0%; transition: width 0.5s; }
+        .timer-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; } .timer-bar { flex: 1; height: 8px; background: #333; border-radius: 4px; overflow: hidden; } .timer-fill { height: 100%; background: #ff7675; width: 100%; } .timer-text { font-family: monospace; color: #ff7675; font-weight: bold; font-size: 16px; width: 35px; text-align: right; }
+        .mode-cards { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+        .mode-card { flex: 1; border: 1px solid var(--border); background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px 5px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; }
+        .mode-card:hover { background: rgba(255,255,255,0.1); }
+        .mode-card.selected { border-color: var(--primary); background: rgba(255, 126, 95, 0.1); box-shadow: 0 0 15px rgba(255, 126, 95, 0.2); }
+        .mode-icon { font-size: 30px; margin-bottom: 5px; } .mode-title { font-size: 12px; font-weight: bold; color: white; } .mode-points { font-size: 10px; color: var(--accent-gold); }
+        .lobby-mode-panel { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 10px 20px; display: inline-block; margin-bottom: 20px; text-align: center; min-width: 200px; }
+        .lmp-label { font-size: 10px; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+        .lmp-value { font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .mode-amigos { color: var(--accent-toxic); } .mode-personales { color: var(--primary); } .mode-secretos { color: #a55eea; }
+        .mode-badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; margin-top: 8px; display: inline-block; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .mode-badge.friends { background: rgba(0, 210, 211, 0.15); color: var(--accent-toxic); border: 1px solid rgba(0, 210, 211, 0.3); }
+        .mode-badge.personal { background: rgba(255, 126, 95, 0.15); color: var(--primary); border: 1px solid rgba(255, 126, 95, 0.3); }
+        .mode-badge.secret { background: rgba(165, 94, 234, 0.15); color: #a55eea; border: 1px solid rgba(165, 94, 234, 0.3); }
+        
+        .toast-invite { background: #23232a; border: 1px solid var(--accent-toxic); padding: 15px; border-radius: 16px; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .ti-header { font-weight: bold; color: var(--accent-toxic); display: flex; align-items: center; gap: 8px; }
+        .ti-body { font-size: 13px; color: #ddd; }
+        .ti-actions { display: flex; gap: 10px; margin-top: 5px; }
+        
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; outline: none; padding: 0; margin: 0; border: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); cursor: pointer; transition: 0.2s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .recharge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+        .recharge-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; cursor: pointer; text-align: center; border: 1px solid transparent; }
+        .recharge-item:hover { border-color: var(--primary); background: rgba(255,255,255,0.1); }
+        
+        .suggestion-chip { background: rgba(0,210,211,0.1); border: 1px dashed var(--accent-toxic); color: var(--accent-toxic); border-radius: 20px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: 0.2s; text-align: left; line-height: 1.4; } 
+        .suggestion-chip:hover { background: var(--accent-toxic); color: #000; font-weight: bold; }
+
+        .powerup-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px; margin-top: 15px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+        .pu-check { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+        .pu-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+        
+        #game-reaction-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 1000; }
+        .reaction-bar { display: flex; justify-content: center; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        
+        .title-card { background: rgba(0,0,0,0.3); border: 1px dashed var(--accent-gold); border-radius: 12px; padding: 15px; margin-top: 15px; display: flex; flex-direction: column; }
+    </style>
+</head>
+<body>
+    
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="toxic-logo-anim">☣️</div>
+            <h1 class="glitch-text">RUMOR <span style="color:var(--primary)">TOXIC</span></h1>
+            <div class="loading-bar-container"><div class="loading-bar"></div></div>
+            <p class="loading-status">INICIANDO SISTEMA...</p>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop><source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg"></audio>
+
+    <div id="notification-bar">
+        <div class="notif-content"><i class="fas fa-robot" style="color: var(--accent-toxic);"></i> <span id="notif-text">El soporte ha respondido tu ticket.</span></div>
+        <button class="btn btn-s" style="width: auto; background: rgba(255,255,255,0.1); border: 1px solid white; padding: 5px 15px; font-size: 12px;" onclick="verRespuestaSoporte()">VER</button>
+    </div>
+
+    <div id="toast-box"></div>
+
+    <div id="modal-support" class="modal-overlay"><div class="modal-box"><div class="support-header"><div class="support-icon-circle"><i class="fas fa-robot"></i></div><h3 style="color:white; margin:0;">Centro de Ayuda</h3><p style="color:var(--text-sec); font-size:12px; margin:5px 0 0 0;">Reporta bugs o problemas.</p></div><div class="social-tabs"><button class="tab-btn active" onclick="verTabSoporte('nuevo', this)">Nuevo Ticket</button><button class="tab-btn" onclick="verTabSoporte('historial', this); socket.emit('obtenerMisTickets')">Mis Tickets</button></div><div id="tab-soporte-nuevo"><div class="chat-input-area"><span class="chat-label">TU CORREO</span><input id="sup-email" type="email" placeholder="ejemplo@correo.com"><span class="chat-label">MENSAJE</span><textarea id="sup-msg" rows="4" placeholder="Describe tu problema aquí..."></textarea></div><button class="btn" style="background:var(--accent-toxic); color:#000; margin-top:20px; font-weight:800;" onclick="playClick(); enviarSoporte()">ENVIAR TICKET <i class="fas fa-paper-plane"></i></button></div><div id="tab-soporte-historial" style="display:none; text-align:left; width:100%;"><div id="user-tickets-container" style="margin-top:10px;">Cargando...</div></div><button class="btn btn-s" style="margin-top:20px;" onclick="playClick(); document.getElementById('modal-support').style.display='none'">Cerrar</button></div></div>
+    <div id="modal-settings" class="modal-overlay"><div class="modal-box"><h3>Configuración ⚙️</h3><div class="settings-row"><div class="settings-label"><span>Música</span> <span id="lbl-music">50%</span></div><div class="slider-container"><input type="range" min="0" max="100" value="50" oninput="setMusicVol(this.value)"></div></div><div class="settings-row"><div class="settings-label"><span>Efectos (SFX)</span> <span id="lbl-sfx">50%</span></div><div class="slider-container"><input type="range" min="0" max="100" value="50" oninput="setSfxVol(this.value)" onchange="playClick()"></div></div><button class="btn btn-s" onclick="document.getElementById('modal-settings').style.display='none'">Cerrar</button></div></div>
+    <div id="modal-recharge" class="modal-overlay"><div class="modal-box"><h3>Recargar Saldo</h3><div class="recharge-grid"><div class="recharge-item" onclick="playClick(); abrirWhatsApp('coins', 500, 1)"><div style="font-size:24px;"><i class="fas fa-coins" style="color:#FFD700;"></i> 500</div><small>$1.00 USD</small></div><div class="recharge-item" onclick="playClick(); abrirWhatsApp('coins', 1200, 2)"><div style="font-size:24px;"><i class="fas fa-coins" style="color:#FFD700;"></i> 1200</div><small>$2.00 USD</small></div><div class="recharge-item" onclick="playClick(); abrirWhatsApp('toxic', 50, 1)"><div style="font-size:24px;"><i class="fas fa-gem" style="color:#00d2d3;"></i> 50</div><small>$1.00 USD</small></div><div class="recharge-item" onclick="playClick(); abrirWhatsApp('vip', 1, 20)"><div style="font-size:24px;">👑 VIP</div><small>$20.00 USD</small></div></div><p style="font-size:12px; color:#aaa; margin-top:15px;">Serás redirigido a WhatsApp para coordinar tu pago directamente de forma segura.</p><button class="btn btn-s" style="margin-top:20px;" onclick="playClick(); document.getElementById('modal-recharge').style.display='none'">Volver</button></div></div>
+    <div id="modal-create" class="modal-overlay"><div class="modal-box"><h3>Nueva Sala</h3><input id="newRoomName" type="text" placeholder="Nombre"><input id="newRoomPass" type="text" placeholder="Clave (Opcional)"><p style="text-align:left; font-size:12px; color:#888; margin-top:15px;">Elige la Modalidad:</p><div class="mode-cards"><div class="mode-card selected" onclick="playClick(); selectMode(100, this)"><div class="mode-icon">👥</div><div class="mode-title">Amigos</div><div class="mode-points">100 Pts</div></div><div class="mode-card" onclick="playClick(); selectMode(200, this)"><div class="mode-icon">🔥</div><div class="mode-title">Personales</div><div class="mode-points">200 Pts</div></div><div class="mode-card" onclick="playClick(); selectMode(300, this)"><div class="mode-icon">🕵️</div><div class="mode-title">Secretos</div><div class="mode-points">300 Pts</div></div></div><div style="display:flex; gap:10px;"><button class="btn btn-s" onclick="playClick(); document.getElementById('modal-create').style.display='none'">Cancelar</button><button class="btn btn-p" onclick="playClick(); crearSala()">Crear</button></div></div></div>
+    <div id="modal-invite" class="modal-overlay"><div class="modal-box"><h3>Invitar Amigos</h3><div id="invite-list" style="max-height: 200px; overflow-y: auto; margin: 15px 0;"></div><button class="btn btn-s" onclick="playClick(); document.getElementById('modal-invite').style.display='none'">Cerrar</button></div></div>
+    <div id="modal-pass" class="modal-overlay"><div class="modal-box"><h3>Sala Privada 🔒</h3><input id="roomPassInput" type="password" placeholder="Contraseña"><button class="btn btn-p" onclick="playClick(); confirmarIngreso()">Entrar</button><button class="btn btn-s" style="margin-top:10px;" onclick="playClick(); document.getElementById('modal-pass').style.display='none'">Cancelar</button></div></div>
+    <div id="modal-edit-profile" class="modal-overlay"><div class="modal-box"><h3>Tus Iconos</h3><div id="inventory-container" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:15px;"></div><button class="btn btn-s" style="margin-top:20px;" onclick="playClick(); document.getElementById('modal-edit-profile').style.display='none'">Cerrar</button></div></div>
+
+    <div id="pantalla-auth">
+        <div class="auth-box">
+            <h1 style="margin:0 0 10px;">RUMOR <span style="color:var(--primary)">TOXIC</span></h1>
+            <div id="form-login"><input id="logUser" type="text" placeholder="Usuario"><input id="logPass" type="password" placeholder="Contraseña"><button onclick="playClick(); login()" class="btn btn-p">ENTRAR</button><button onclick="playClick(); toggleAuth()" class="btn btn-s" style="margin-top:10px;">Crear Cuenta</button></div>
+            <div id="form-reg" style="display:none;"><input id="regEmail" type="email" placeholder="Correo"><input id="regUser" type="text" placeholder="Usuario"><input id="regPass" type="password" placeholder="Contraseña"><button onclick="playClick(); registro()" class="btn btn-p">REGISTRARSE</button><button onclick="playClick(); toggleAuth()" class="btn btn-s" style="margin-top:10px;">Volver</button></div>
+            <p id="error-msg" style="color:#ff7675; margin-top:15px; font-size:12px;"></p>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div style="font-size:22px; font-weight:800; margin-bottom:40px;">RUMOR <span style="color:var(--primary)">TOXIC</span></div>
+        <div class="nav-item active" onclick="playClick(); nav('view-home', this)"><i class="fas fa-gamepad"></i> Juegos</div>
+        <div class="nav-item" onclick="playClick(); nav('view-social', this)"><i class="fas fa-users"></i> Social</div>
+        <div class="nav-item" onclick="playClick(); nav('view-store', this)"><i class="fas fa-shopping-bag"></i> Tienda</div>
+        <div class="nav-item" onclick="playClick(); nav('view-profile', this)"><i class="fas fa-user"></i> Perfil</div>
+        <div class="nav-item" onclick="playClick(); document.getElementById('modal-support').style.display='flex'"><i class="fas fa-headset"></i> Soporte</div>
+        <div class="nav-item" id="nav-admin" style="display:none; color:var(--accent-toxic);" onclick="playClick(); nav('view-admin', this)"><i class="fas fa-shield-alt"></i> Panel Admin</div>
+        <div class="nav-item" style="margin-top:auto; color:#ff7675;" onclick="playClick(); location.reload()"><i class="fas fa-sign-out-alt"></i> Salir</div>
+    </div>
+
+    <div id="main-content">
+        <div id="game-reaction-layer"></div> <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <div style="font-weight:bold; color:var(--primary);" id="header-user">Player</div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-s" style="width:auto; padding:8px 12px;" onclick="playClick(); document.getElementById('modal-settings').style.display='flex'"><i class="fas fa-cog"></i></button>
+                <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="playClick(); document.getElementById('modal-recharge').style.display='flex'">
+                    <div style="display:flex; align-items:center; gap:5px; color:#FFD700; font-weight:bold; background:rgba(255,215,0,0.1); padding:5px 10px; border-radius:12px;"><i class="fas fa-coins"></i> <span id="bal-coins">0</span></div>
+                    <div style="display:flex; align-items:center; gap:5px; color:#00d2d3; font-weight:bold; background:rgba(0,210,211,0.1); padding:5px 10px; border-radius:12px;"><i class="fas fa-gem"></i> <span id="bal-toxic">0</span></div>
+                    <div style="background:var(--primary); width:28px; height:28px; border-radius:50%; display:flex; justify-content:center; align-items:center; color:#fff; box-shadow:0 0 10px rgba(255,126,95,0.4); transition: transform 0.2s;"><i class="fas fa-plus" style="font-size: 14px;"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-home" class="section active">
+            <h2 style="margin-bottom:20px;">Biblioteca</h2>
+            <div class="library-container">
+                <div class="card" onclick="playClick(); nav('view-rooms')"><div class="game-cover lib-rumor">🤫</div><h3>Rumor Toxic</h3><p style="font-size:12px; color:var(--text-sec); flex:1;">Mentiras, traiciones y salseo.</p><button class="btn btn-p" style="margin-top:15px;">Jugar</button></div>
+                <div class="card" style="opacity:0.7; cursor:default;"><div class="game-cover lib-secret">🔥</div><h3>Exotic</h3><p style="font-size:12px; color:var(--text-sec); flex:1;">Juego de cartas picantes.</p><span style="font-size:10px; background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:10px; display:inline-block; margin-top:15px;">PRÓXIMAMENTE</span></div>
+            </div>
+        </div>
+
+        <div id="view-social" class="section">
+            <div class="social-tabs"><button class="tab-btn active" onclick="playClick(); verTabSocial('amigos', this)">Amigos</button><button class="tab-btn" onclick="playClick(); verTabSocial('solicitudes', this)">Solicitudes</button><button class="tab-btn" onclick="playClick(); verTabSocial('buscar', this)">Buscar</button></div>
+            <div id="tab-amigos" class="social-content"><div id="friends-list"></div></div>
+            <div id="tab-solicitudes" class="social-content" style="display:none;"><div id="req-list"></div></div>
+            <div id="tab-buscar" class="social-content" style="display:none;"><div style="display:flex; gap:10px; margin-bottom:20px;"><input id="search-friend-input" type="text" placeholder="Usuario..." style="margin:0;"><button class="btn btn-p" style="width:auto;" onclick="playClick(); socket.emit('buscarPersona', document.getElementById('search-friend-input').value)">🔍</button></div><div id="search-results-social"></div></div>
+        </div>
+
+        <div id="view-rooms" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><button class="btn btn-s" style="width:auto;" onclick="playClick(); nav('view-home')"><i class="fas fa-arrow-left"></i></button><button class="btn btn-p" style="width:auto;" onclick="playClick(); document.getElementById('modal-create').style.display='flex'">+ Crear</button></div>
+            <div id="rooms-list" class="room-grid"></div>
+        </div>
+
+        <div id="view-store" class="section"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h2>Tienda</h2><button class="btn btn-p" style="width:auto;" onclick="playClick(); document.getElementById('modal-recharge').style.display='flex'">Recargar Saldo</button></div><div id="store-list" class="store-grid"></div></div>
+        <div id="view-profile" class="section"><div style="text-align:center; padding:30px; background:var(--bg-card); border-radius:20px;"><div id="p-avatar" style="font-size:60px; margin-bottom:10px;">👤</div><h2 id="p-name">User</h2><button class="btn btn-s" style="width:auto; margin-top:10px;" onclick="playClick(); abrirEditor()">Editar Icono</button></div><h3 style="margin-top:30px;">Historial</h3><div id="history-box" style="margin-top:15px;"></div></div>
+
+        <div id="view-admin" class="section">
+            <h2 style="color:var(--accent-toxic); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">🛡️ Panel de Control Administrador</h2>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid var(--accent-toxic);">
+                <h3 style="margin-top:0; color:var(--accent-gold);"><i class="fas fa-user-edit"></i> Gestión de Usuarios y VIP</h3>
+                <input type="text" id="admin-target-user" placeholder="Nombre exacto del usuario" style="margin-bottom:15px; border-color:var(--accent-toxic);">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px;"><input type="checkbox" id="admin-set-vip" style="width:auto; margin:0; transform: scale(1.5);"><label for="admin-set-vip" style="font-weight:bold; color:white;">Activar Pase VIP 👑</label></div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;"><div style="flex:1;"><span class="chat-label" style="color:#FFD700;">Añadir Coins</span><input type="number" id="admin-add-coins" placeholder="Ej: 500" value="0"></div><div style="flex:1;"><span class="chat-label">Añadir Toxic</span><input type="number" id="admin-add-toxic" placeholder="Ej: 50" value="0"></div></div>
+                <button class="btn btn-p" style="background:linear-gradient(135deg, var(--accent-toxic), var(--primary));" onclick="enviarActualizacionAdmin()">Actualizar Cuenta de Usuario</button>
+            </div>
+            <h3 style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">Tickets de Soporte</h3>
+            <button class="btn btn-s" style="margin-bottom:15px; width:auto;" onclick="playClick(); socket.emit('obtenerTicketsAdmin')">🔄 Actualizar Tickets</button>
+            <div id="admin-tickets-list"><p style="color:#666">Cargando...</p></div>
+        </div>
+
+        <div id="view-lobby" class="section">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;"><button class="btn btn-s" style="width:auto;" onclick="playClick(); socket.emit('salirSala')">Salir</button><div style="text-align:right;"><div id="room-code-display" style="font-weight:bold; font-size:18px;">SALA</div><div id="mode-badge-lobby" class="mode-badge"></div></div></div>
+            <div style="text-align:center; margin-top:10px;"><div id="lobby-mode-panel" class="lobby-mode-panel"><div class="lmp-label">MODALIDAD</div><div id="lobby-mode-text" class="lmp-value">Cargando...</div></div></div>
+            <div style="text-align:center; margin-bottom: 20px;"><button class="btn btn-s" style="width: auto; border: 1px dashed var(--text-sec);" onclick="playClick(); abrirInvitaciones()">Invitar Amigo ➕</button></div>
+            <div id="lobby-players" class="lobby-players"></div>
+            <div style="text-align:center;"><button id="btn-start" class="btn btn-p" style="display:none; max-width:250px; margin:0 auto;" onclick="playClick(); socket.emit('iniciarJuego')">INICIAR PARTIDA</button><p id="msg-wait" style="color:#666;">Esperando...</p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:30px;"><button class="btn btn-s" style="width:50px;height:50px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','🔥')">🔥</button><button class="btn btn-s" style="width:50px;height:50px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','😂')">😂</button><button class="btn btn-s" style="width:50px;height:50px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','👋')">👋</button></div></div>
+        </div>
+
+        <div id="view-game" class="section" style="text-align:center;">
+            <div style="max-width:600px; margin:0 auto;">
+                <div class="game-header-bar"><span style="font-size:12px;">META: <span id="meta-display">100</span> PTS</span><span id="my-game-score" class="score-pill">0 Pts</span></div>
+                <div class="progress-bar-bg"><div id="my-progress-fill" class="progress-fill"></div></div>
+                <div style="margin-bottom:30px;"></div>
+                
+                <div style="background:var(--bg-card); padding:30px; border-radius:20px; z-index:10; position:relative;">
+                    <h2 id="role-title" style="color:var(--primary)">Rol</h2>
+                    
+                    <div id="input-area">
+                        <input id="rumor-text" type="text" placeholder="Escribe un rumor..." style="margin-bottom:5px;">
+                        
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                            <button class="btn btn-s" style="width:auto; padding:5px 15px; font-size:12px; background:rgba(255,126,95,0.1); color:var(--primary); border:1px solid var(--primary);" onclick="playClick(); usarComodin()">🐔 Usar Comodín</button>
+                        </div>
+
+                        <div id="rumor-suggestions" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; justify-content:center;"></div>
+                        
+                        <div class="powerup-box">
+                            <label class="pu-check"><input type="checkbox" id="pu-escudo"> 🛡️ <strong>Escudo Anti-VIP</strong> (Oculta tu nombre) <span style="color:#FFD700">-50 Coins</span></label>
+                            <label class="pu-check"><input type="checkbox" id="pu-doble"> ⚔️ <strong>Doble Filo</strong> (¡Si ganas te llevas +40pts!) <span style="color:#00d2d3">-10 Toxic</span></label>
+                        </div>
+                        <br>
+                        
+                        <button class="btn btn-p" onclick="playClick(); enviarMiRumor()">ENVIAR RUMOR</button>
+                    </div>
+
+                    <div id="vote-area" style="margin-top:20px; display:none;">
+                        <div class="timer-container"><div class="timer-bar"><div id="vote-timer-fill" class="timer-fill"></div></div><div id="timer-text" class="timer-text">30s</div></div>
+                        <p style="color:#ff7675; font-size:12px; margin-bottom:10px;">¡VOTA RÁPIDO O PIERDES 20 PTS!</p>
+                        <div id="vote-cards-container"></div>
+                    </div>
+                    
+                    <div id="vote-wait-msg" style="display:none;">
+                        <p style="color:#888; font-style:italic;">El Elegido está decidiendo...</p>
+                        
+                        <div class="reaction-bar">
+                            <button class="btn btn-s" style="width:40px;height:40px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','👀')">👀</button>
+                            <button class="btn btn-s" style="width:40px;height:40px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','😱')">😱</button>
+                            <button class="btn btn-s" style="width:40px;height:40px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','🤣')">🤣</button>
+                            <button class="btn btn-s" style="width:40px;height:40px;padding:0;border-radius:50%;" onclick="playPop(); socket.emit('lobbyReaction','💀')">💀</button>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <div id="view-round-res" class="section" style="text-align:center;">
+            <h2 style="color:var(--accent-gold)">GANADOR DE RONDA</h2>
+            <div id="round-content" style="background:var(--bg-card); padding:30px; border-radius:15px; margin:20px auto; max-width:500px; position:relative; z-index:10;"></div>
+            <p style="color:#aaa;">Siguiente ronda en 5 segundos...</p>
+        </div>
+
+        <div id="view-results" class="section" style="text-align:center;">
+            <h1 style="font-size:40px; color:var(--accent-toxic)">👑 VICTORIA 👑</h1>
+            <div id="result-content" style="background:var(--bg-card); padding:30px; border-radius:15px; margin:20px auto; max-width:500px; position:relative; z-index:10;"></div>
+            <button class="btn btn-s" style="position:relative; z-index:10;" onclick="playClick(); socket.emit('salirSala'); nav('view-rooms')">Volver al Menú</button>
+        </div>
+    </div>
+
+    <div class="mobile-bar">
+        <div class="mb-item active" onclick="playClick(); nav('view-home', this)"><i class="fas fa-gamepad"></i> Juegos</div>
+        <div class="mb-item" onclick="playClick(); nav('view-social', this)"><i class="fas fa-users"></i> Social</div>
+        <div class="mb-item" onclick="playClick(); nav('view-store', this)"><i class="fas fa-shopping-bag"></i> Tienda</div>
+        <div class="mb-item" onclick="playClick(); nav('view-profile', this)"><i class="fas fa-user"></i> Perfil</div>
+        <div class="mb-item" onclick="playClick(); document.getElementById('modal-support').style.display='flex'"><i class="fas fa-headset"></i> Soporte</div>
+        <div class="mb-item" id="mb-admin" style="display:none; color:var(--accent-toxic);" onclick="playClick(); nav('view-admin', this)"><i class="fas fa-shield-alt"></i></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- LOGICA LOADING SCREEN ---
+        window.addEventListener('load', () => { setTimeout(() => { const screen = document.getElementById('loading-screen'); if(screen) { screen.style.opacity = '0'; setTimeout(() => { screen.style.display = 'none'; }, 800); } }, 2500); });
+
+        // --- BANCO DE IDEAS Y COMODIN ---
+        const IDEAS_AMIGOS = ["Siempre deja en visto a...", "Tiene un miedo ridículo a...", "Baila frente al espejo escuchando...", "La última vez que se emborrachó...", "Cree que nadie sabe que él/ella..."];
+        const IDEAS_PERSONALES = ["Tiene un fetiche secreto con...", "Aún revisa las redes de su ex para...", "Mintió a sus papás sobre...", "Su mayor vergüenza en público fue...", "Oculta que le gusta..."];
+        const IDEAS_SECRETOS = ["Fue el/la culpable de que...", "Engañó a alguien con...", "Robó algo de la casa de...", "Arruinó a propósito la relación de...", "Escondió un secreto turbio sobre..."];
+        const COMODINES_GENERAR = ["No sabe cuánto es 2+2", "Es alienígena disfrazado", "Se saca los mocos cuando nadie mira", "Llora escuchando reguetón", "Le debe dinero a medio mundo", "Tiene peores gustos que mi abuela"];
+
+        function usarComodin() {
+            const txt = document.getElementById('rumor-text');
+            txt.value = COMODINES_GENERAR[Math.floor(Math.random() * COMODINES_GENERAR.length)];
+        }
+
+        // --- MOTOR DE AUDIO ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const bgMusic = document.getElementById('bg-music'); let isMusicPlaying = false; let musicVolume = 0.5; let sfxVolume = 0.5; bgMusic.volume = musicVolume;
+        function setMusicVol(val) { musicVolume = val / 100; bgMusic.volume = musicVolume; document.getElementById('lbl-music').innerText = val + "%"; }
+        function setSfxVol(val) { sfxVolume = val / 100; document.getElementById('lbl-sfx').innerText = val + "%"; }
+        function unlockAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); if (!isMusicPlaying) { bgMusic.play().catch(e => {}); isMusicPlaying = true; } }
+        document.body.addEventListener('click', unlockAudio, { once: true }); document.body.addEventListener('touchstart', unlockAudio, { once: true });
+        function updateMusicState(viewId) { if (viewId === 'view-game') bgMusic.pause(); else if (isMusicPlaying) bgMusic.play().catch(e=>{}); }
+
+        function playClick() { if (audioCtx.state === 'suspended') return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * sfxVolume, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+        function playNotify() { if (audioCtx.state === 'suspended') return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine'; osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * sfxVolume, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5); osc.start(); osc.stop(audioCtx.currentTime + 0.5); }
+        function playSuccess() { if (audioCtx.state === 'suspended') return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'square'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.05 * sfxVolume, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+        function playPop() { if (audioCtx.state === 'suspended') return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1 * sfxVolume, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+
+        // --- LÓGICA DEL JUEGO ---
+        const socket = io();
+        let itemsPoseidos = []; let miNombre = ""; let soyVip = false; let timerInterval = null; let selectedMeta = 100; let currentMeta = 100; let misAmigos = []; let invitacionesPendientes = {};
+
+        function toggleAuth() { const l=document.getElementById('form-login'), r=document.getElementById('form-reg'); if(l.style.display==='none'){l.style.display='block';r.style.display='none'}else{l.style.display='none';r.style.display='block'} }
+        function login(){ socket.emit('login', {usuario:document.getElementById('logUser').value, pass:document.getElementById('logPass').value}); }
+        function registro(){ socket.emit('registro', {email:document.getElementById('regEmail').value, usuario:document.getElementById('regUser').value, pass:document.getElementById('regPass').value}); }
+        function abrirWhatsApp(tipo, cantidad, costo) { let mensaje = `Hola, mi usuario es *${miNombre}*. Quiero recargar ${cantidad} ${tipo} por $${costo} USD.`; if (tipo === 'vip') { mensaje = `Hola, mi usuario es *${miNombre}*. Quiero activar el VIP por $${costo} USD.`; } window.open(`https://wa.me/584121599459?text=${encodeURIComponent(mensaje)}`, '_blank'); }
+
+        function enviarActualizacionAdmin() { const usuarioTarget = document.getElementById('admin-target-user').value; if (!usuarioTarget) return alert("Escribe el nombre del usuario."); socket.emit('adminActualizarUsuario', { usuario: usuarioTarget, vip: document.getElementById('admin-set-vip').checked, coins: document.getElementById('admin-add-coins').value, toxic: document.getElementById('admin-add-toxic').value }); document.getElementById('admin-target-user').value = ""; document.getElementById('admin-set-vip').checked = false; document.getElementById('admin-add-coins').value = "0"; document.getElementById('admin-add-toxic').value = "0"; }
+        function verTabSoporte(tab, btn) { document.getElementById('tab-soporte-nuevo').style.display = tab==='nuevo'?'block':'none'; document.getElementById('tab-soporte-historial').style.display = tab==='historial'?'block':'none'; btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+        function enviarSoporte() { const email = document.getElementById('sup-email').value; const msg = document.getElementById('sup-msg').value; if(!email || !msg) return alert("Llena los campos"); socket.emit('enviarSoporte', { email, mensaje: msg }); document.getElementById('sup-msg').value = ""; alert("Ticket enviado."); }
+        function responderTicketAdmin(id) { const inputEl = document.getElementById(`reply-in-${id}`); if(!inputEl.value) return alert("Escribe algo."); socket.emit('adminResponderTicket', { id: id, respuesta: inputEl.value }); }
+        function verRespuestaSoporte() { document.getElementById('notification-bar').classList.remove('show'); document.getElementById('modal-support').style.display = 'flex'; verTabSoporte('historial', document.querySelectorAll('.social-tabs .tab-btn')[1]); socket.emit('obtenerMisTickets'); }
+
+        socket.on('errorLogin', (m)=>document.getElementById('error-msg').innerText=m);
+        socket.on('loginExitoso', (data)=>{
+            document.getElementById('pantalla-auth').style.display='none';
+            miNombre = data.usuario; soyVip = data.vip === 1; 
+            document.getElementById('header-user').innerHTML = data.usuario + (soyVip ? ' <span style="color:gold; font-size:12px; font-weight:bold;">[VIP]</span>' : '');
+            document.getElementById('p-name').innerHTML = data.usuario + (soyVip ? ' 👑' : '');
+            document.getElementById('bal-coins').innerText = data.coins; document.getElementById('bal-toxic').innerText = data.toxic;
+            itemsPoseidos = data.items.split(','); actualizarAvatarVisual(data.avatar, data.avatar_type);
+            const hb = document.getElementById('history-box'); if(data.historial && data.historial.length>0) { hb.innerHTML = data.historial.map(h=>`<div class="hist-item"><span>${h.fecha}</span><span class="${h.resultado.includes('VICTORIA')?'res-win':'res-loss'}">${h.resultado}</span></div>`).join(''); } else { hb.innerHTML = "<p style='color:#666'>Sin historial.</p>"; }
+            socket.emit('cargarSocial'); if(data.esAdmin) { document.getElementById('nav-admin').style.display = 'flex'; document.getElementById('mb-admin').style.display = 'flex'; socket.emit('obtenerTicketsAdmin'); } unlockAudio(); 
+        });
+
+        socket.on('saldoActualizado', (d)=>{ 
+            document.getElementById('bal-coins').innerText=d.coins; document.getElementById('bal-toxic').innerText=d.toxic; 
+            if (d.vip !== undefined) { soyVip = d.vip === 1; document.getElementById('header-user').innerHTML = miNombre + (soyVip ? ' <span style="color:gold; font-size:12px; font-weight:bold;">[VIP]</span>' : ''); document.getElementById('p-name').innerHTML = miNombre + (soyVip ? ' 👑' : ''); }
+            playSuccess(); 
+        });
+
+        socket.on('misTickets', (tickets) => { const c = document.getElementById('user-tickets-container'); if(tickets.length===0) c.innerHTML = "<p style='color:#666'>No has enviado tickets.</p>"; else c.innerHTML = tickets.map(t => `<div class="user-ticket-item ${t.respuesta ? 'answered' : ''}" style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:11px; color:#aaa; margin-bottom:5px;"><span>${t.fecha}</span><span>${t.respuesta ? '✅ RESUELTO' : '⏳ PENDIENTE'}</span></div><div style="font-size:14px; margin-bottom:5px;">${t.mensaje}</div>${t.respuesta ? `<div class="ticket-reply-box" style="background:rgba(0,210,211,0.1); padding:10px; border-radius:8px; margin-top:5px; font-size:13px; color:var(--accent-toxic);"><strong>Soporte:</strong> ${t.respuesta}</div>` : ''}</div>`).join(''); });
+        socket.on('listaTicketsAdmin', (tickets) => { const container = document.getElementById('admin-tickets-list'); if(tickets.length === 0) container.innerHTML = "<p style='color:#666'>No hay tickets pendientes.</p>"; else container.innerHTML = tickets.map(t => `<div class="ticket-card"><div class="ticket-header"><span><i class="fas fa-user"></i> ${t.usuario || 'Anon'} (${t.email})</span><span>${t.fecha}</span></div><div class="ticket-msg">${t.mensaje}</div>${t.respuesta ? `<p style="font-size:12px; color:var(--accent-toxic);">Respuesta enviada: ${t.respuesta}</p>` : `<div><input id="reply-in-${t.id}" type="text" class="admin-reply-input" placeholder="Escribe tu respuesta..."><button class="btn-resolve" onclick="responderTicketAdmin(${t.id})">Responder y Cerrar</button></div>`}</div>`).join(''); });
+        socket.on('notificacion', (m) => { if(m.includes("Soporte ha respondido")) { playSuccess(); document.getElementById('notif-text').innerText = "¡El soporte te ha respondido!"; document.getElementById('notification-bar').classList.add('show'); setTimeout(() => { document.getElementById('notification-bar').classList.remove('show'); }, 8000); } else { playNotify(); const t = document.createElement('div'); t.className='toast'; t.innerText=m; document.getElementById('toast-box').appendChild(t); setTimeout(()=>t.remove(),3000); } });
+
+        function actualizarAvatarVisual(av, type) { const el = document.getElementById('p-avatar'); el.innerHTML = type==='url' ? `<img src="${av}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : av; }
+        function verTabSocial(tab, btn) { document.querySelectorAll('.social-content').forEach(d => d.style.display='none'); document.getElementById('tab-'+tab).style.display='block'; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); if(btn) btn.classList.add('active'); }
+        
+        socket.on('socialData', (data) => { misAmigos = data.amigos; const fList = document.getElementById('friends-list'); fList.innerHTML = data.amigos.length ? data.amigos.map(a => `<div class="friend-row" style="display:flex; justify-content:space-between; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px;"><div style="display:flex;align-items:center; gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:${a.online?'#00d2d3':'#555'};"></span><strong>${a.nombre}</strong></div><button class="btn btn-s" style="width:auto; padding:5px 10px; font-size:12px;" onclick="playClick(); socket.emit('eliminarAmigo','${a.nombre}')">X</button></div>`).join('') : '<p style="color:#666">No tienes amigos aún.</p>'; const rList = document.getElementById('req-list'); rList.innerHTML = data.solicitudes.length ? data.solicitudes.map(s => `<div class="friend-row" style="margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><span>${s.de} te quiere añadir.</span><div style="display:flex; gap:5px;"><button class="btn btn-p" style="width:auto; padding:5px 10px;" onclick="playClick(); socket.emit('responderSolicitud',{id:${s.id},accion:'aceptar'})">✔</button><button class="btn btn-s" style="width:auto; padding:5px 10px;" onclick="playClick(); socket.emit('responderSolicitud',{id:${s.id},accion:'rechazar'})">X</button></div></div>`).join('') : '<p style="color:#666">No hay solicitudes.</p>'; });
+        socket.on('resultadoBusquedaSocial', (res) => { const div = document.getElementById('search-results-social'); div.innerHTML = res.length ? res.map(u => `<div class="friend-row" style="display:flex; justify-content:space-between; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px;"><strong>${u.usuario}</strong><button class="btn btn-p" style="width:auto; padding:5px 10px;" onclick="playClick(); socket.emit('enviarSolicitudAmistad','${u.usuario}')">Agregar</button></div>`).join('') : '<p style="color:#666">No encontrado.</p>'; });
+        socket.on('refrescarSocial', () => { socket.emit('cargarSocial'); });
+
+        function abrirInvitaciones() { socket.emit('cargarSocial'); const listContainer = document.getElementById('invite-list'); const onlineFriends = misAmigos.filter(a => a.online); if(onlineFriends.length === 0) listContainer.innerHTML = "<p style='color:#666; text-align:center;'>No tienes amigos conectados.</p>"; else listContainer.innerHTML = onlineFriends.map(a => `<div class="friend-row" style="display:flex; justify-content:space-between; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px;"><div style="display:flex;align-items:center; gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:#00d2d3;"></span><strong>${a.nombre}</strong></div><button class="btn btn-p" style="width:auto; padding:5px 10px; font-size:12px;" onclick="playClick(); socket.emit('invitarAmigo','${a.nombre}'); this.innerText='Enviado'; this.disabled=true;">Invitar</button></div>`).join(''); document.getElementById('modal-invite').style.display = 'flex'; }
+        socket.on('invitacionRecibida', (inv) => { playNotify(); invitacionesPendientes[inv.salaId] = inv.pass; const toast = document.createElement('div'); toast.className = 'toast-invite'; toast.id = `inv-${inv.salaId}`; toast.innerHTML = `<div class="ti-header"><i class="fas fa-envelope"></i> Invitación</div><div class="ti-body"><strong>${inv.host}</strong> te invita a la sala <strong>${inv.salaNombre}</strong>.</div><div class="ti-actions"><button class="btn btn-p" style="font-size:12px; padding:8px;" onclick="playClick(); aceptarInvitacion('${inv.salaId}')">Aceptar</button><button class="btn btn-s" style="font-size:12px; padding:8px;" onclick="playClick(); rechazarInvitacion('${inv.salaId}')">Ignorar</button></div>`; document.getElementById('toast-box').appendChild(toast); setTimeout(() => { const el = document.getElementById(`inv-${inv.salaId}`); if(el) el.remove(); delete invitacionesPendientes[inv.salaId]; }, 15000); });
+        function aceptarInvitacion(salaId) { const pass = invitacionesPendientes[salaId]; socket.emit('unirseSala', {id: salaId, clave: pass}); rechazarInvitacion(salaId); }
+        function rechazarInvitacion(salaId) { const el = document.getElementById(`inv-${salaId}`); if(el) el.remove(); delete invitacionesPendientes[salaId]; }
+
+        socket.on('listaSalas', (salas) => { const grid = document.getElementById('rooms-list'); grid.innerHTML = ""; if(salas.length===0) grid.innerHTML = "<p style='color:#666'>No hay salas creadas.</p>"; salas.forEach(s => { let badgeClass = "friends"; let badgeText = "👥 Amigos"; if(s.meta == 200) { badgeClass = "personal"; badgeText = "🔥 Personales"; } if(s.meta == 300) { badgeClass = "secret"; badgeText = "🕵️ Secretos"; } grid.innerHTML += `<div class="card" onclick="playClick(); intentarUnirse('${s.id}', ${s.privada})"><h3>${s.nombre} ${s.privada?'🔒':''}</h3><div class="mode-badge ${badgeClass}">${badgeText}</div><p style="font-size:12px; color:#888; margin-top:10px;">👥 ${s.jugadores} | ${s.enCurso?'Jugando':'Esperando'}</p><button class="btn btn-s" style="margin-top:10px;">Entrar</button></div>`; }); });
+        socket.on('actualizarListaSalas', () => { if(document.getElementById('view-rooms').style.display === 'block') socket.emit('obtenerSalas'); });
+        
+        function selectMode(points, el) { selectedMeta = points; document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
+        function crearSala() { const n = document.getElementById('newRoomName').value; const p = document.getElementById('newRoomPass').value; if(n) { socket.emit('crearSala', {nombre:n, clave:p, meta: selectedMeta}); document.getElementById('modal-create').style.display='none'; } }
+        function intentarUnirse(id, esPrivada) { if(esPrivada) { salaPendiente=id; document.getElementById('modal-pass').style.display='flex'; } else { socket.emit('unirseSala', {id:id, clave:null}); } }
+        function confirmarIngreso() { socket.emit('unirseSala', {id:salaPendiente, clave:document.getElementById('roomPassInput').value}); document.getElementById('modal-pass').style.display='none'; }
+
+        socket.on('entradoEnSala', (d) => { 
+            playSuccess(); currentMeta = d.meta; document.getElementById('meta-display').innerText = currentMeta; document.getElementById('room-code-display').innerText = d.nombreSala;
+            let panelText = document.getElementById('lobby-mode-text'); if(d.meta == 100) { panelText.className = "lmp-value mode-amigos"; panelText.innerHTML = "👥 AMIGOS (100 Pts)"; } else if(d.meta == 200) { panelText.className = "lmp-value mode-personales"; panelText.innerHTML = "🔥 PERSONALES (200 Pts)"; } else { panelText.className = "lmp-value mode-secretos"; panelText.innerHTML = "🕵️ SECRETOS (300 Pts)"; }
+            let badgeClass = "friends"; let badgeText = "👥 Amigos"; if(d.meta == 200) { badgeClass = "personal"; badgeText = "🔥 Personales"; } if(d.meta == 300) { badgeClass = "secret"; badgeText = "🕵️ Secretos"; }
+            const badgeEl = document.getElementById('mode-badge-lobby'); badgeEl.className = `mode-badge ${badgeClass}`; badgeEl.innerText = badgeText;
+            nav('view-lobby'); 
+        });
+
+        socket.on('actualizarSala', (lista) => { document.getElementById('lobby-players').innerHTML = lista.map((p, i) => { return `<div class="player-tile">${i===0?'<div class="pt-crown">👑</div>':''}<div class="pt-avatar">${p.avatarType==='url'?`<img src="${p.avatar}" style="width:100%;height:100%;border-radius:50%;">`:p.avatar}</div><div>${p.nombre}</div></div>`; }).join(''); const esHost = lista.length>0 && lista[0].id===socket.id; document.getElementById('btn-start').style.display = esHost ? 'block' : 'none'; document.getElementById('msg-wait').style.display = esHost ? 'none' : 'block'; });
+        
+        // --- MANEJO DE REACCIONES (LOBBY + GAME) ---
+        socket.on('gameReaction', (d)=>{ 
+            playPop(); 
+            let c = document.getElementById('view-game').classList.contains('active') ? document.getElementById('game-reaction-layer') : document.getElementById('lobby-players');
+            const b=document.createElement('div'); b.innerText=d.emoji; b.style.position='absolute'; 
+            b.style.top='50%'; b.style.left= Math.random() * 80 + 10 + '%'; 
+            b.style.fontSize='40px'; b.style.animation='floatUp 1.5s ease-out forwards'; 
+            c.appendChild(b); setTimeout(()=>b.remove(),1500); 
+        });
+
+        socket.on('datosCatalogo', (cat) => { catalogoGlobal = cat; const c = document.getElementById('store-list'); c.innerHTML = ""; cat.forEach(i => { if(i.moneda==='gratis') return; const tengo = itemsPoseidos.includes(i.id); let icon = i.icon; if(i.nombre === 'Shinobi' || i.id === 'c_ninja') { icon = '<i class="fas fa-user-ninja" style="color:#bdc3c7"></i>'; } let monedaIcon = i.moneda === 'coins' ? '<i class="fas fa-coins" style="color:#FFD700"></i>' : '<i class="fas fa-gem" style="color:#00d2d3"></i>'; c.innerHTML += `<div class="card"><div style="font-size:40px;">${icon}</div><strong>${i.nombre}</strong><br><small>${monedaIcon} ${i.precio}</small><button class="btn ${tengo?'btn-s':'btn-p'}" style="margin-top:10px;" onclick="playClick(); socket.emit('comprarItem','${i.id}')" ${tengo?'disabled':''}>${tengo?'Listo':'Comprar'}</button></div>`; }); });
+        function abrirEditor() { const c = document.getElementById('inventory-container'); c.innerHTML = ""; catalogoGlobal.forEach(i => { if(itemsPoseidos.includes(i.id)) { let icon = i.icon; if(i.nombre === 'Shinobi' || i.id === 'c_ninja') { icon = '<i class="fas fa-user-ninja" style="color:#bdc3c7"></i>'; } c.innerHTML += `<div style="font-size:30px; cursor:pointer; padding:10px; background:rgba(255,255,255,0.1); border-radius:10px; text-align:center;" onclick="playClick(); socket.emit('cambiarAvatar',{tipo:'emoji',valor:'${i.icon}'}); document.getElementById('modal-edit-profile').style.display='none';">${icon}</div>`; } }); document.getElementById('modal-edit-profile').style.display='flex'; }
+        socket.on('avatarActualizado', (d)=>{ actualizarAvatarVisual(d.valor, d.tipo); });
+        
+        function nav(viewId, el) { 
+            updateMusicState(viewId); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(viewId).classList.add('active'); 
+            if(el) { document.querySelectorAll('.mb-item').forEach(n => n.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); if(el.classList.contains('mb-item') || el.classList.contains('nav-item')) el.classList.add('active'); } 
+            if(viewId==='view-rooms') socket.emit('obtenerSalas'); if(viewId==='view-social') socket.emit('cargarSocial'); 
+        }
+
+        socket.on('actualizarPuntajesPartida', (scores) => { const s = scores[miNombre] || 0; document.getElementById('my-game-score').innerText = s + " Pts"; document.getElementById('my-progress-fill').style.width = Math.min((s/currentMeta)*100, 100) + "%"; });
+        
+        // ENVIAR RUMOR CON POWER-UPS
+        function enviarMiRumor() {
+            const t = document.getElementById('rumor-text').value;
+            const usaEscudo = document.getElementById('pu-escudo').checked;
+            const usaDoble = document.getElementById('pu-doble').checked;
+            if(!t) return alert("Escribe un rumor");
+            
+            socket.emit('enviarRumor', { texto: t, escudo: usaEscudo, dobleFilo: usaDoble });
+            
+            document.getElementById('pu-escudo').checked = false;
+            document.getElementById('pu-doble').checked = false;
+        }
+
+        socket.on('faseEscritura', (d) => { 
+            nav('view-game'); 
+            document.getElementById('role-title').innerText = d.msj; 
+            document.getElementById('rumor-text').value = ""; 
+            
+            if (d.esVictima) {
+                document.getElementById('input-area').style.display = 'none'; 
+                document.getElementById('vote-wait-msg').style.display = 'none'; 
+            } else {
+                document.getElementById('input-area').style.display = 'block';
+                const sugContainer = document.getElementById('rumor-suggestions');
+                let pool = IDEAS_AMIGOS; if (currentMeta === 200) pool = IDEAS_PERSONALES; if (currentMeta === 300) pool = IDEAS_SECRETOS;
+                const shuffled = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+                sugContainer.innerHTML = shuffled.map(idea => `<button class="suggestion-chip" onclick="document.getElementById('rumor-text').value = '${idea}'; playPop();">${idea}</button>`).join('');
+            }
+            document.getElementById('vote-area').style.display = 'none'; if(timerInterval) clearInterval(timerInterval); 
+        });
+        
+        socket.on('faseVotacion', (data) => { 
+            document.getElementById('input-area').style.display='none'; 
+            if (socket.id === data.idDecisor) { 
+                document.getElementById('vote-area').style.display='block';
+                document.getElementById('vote-wait-msg').style.display='none';
+                
+                document.getElementById('vote-cards-container').innerHTML = data.rumores.map((v,i) => `
+                    <button class="btn btn-s" style="margin-bottom:10px; text-align:left; border:1px solid var(--accent-toxic); padding:15px; display:flex; flex-direction:column; gap:5px;" onclick="playClick(); socket.emit('elegirGanador',${v.originalIndex})">
+                        <span style="font-size:16px;">${v.texto}</span>
+                        ${soyVip ? `<span style="font-size:11px; color:var(--accent-gold); font-weight:bold;">🕵️ Autor: ${v.autor}</span>` : ''}
+                    </button>
+                `).join('');
+                
+                const bar = document.getElementById('vote-timer-fill'); const txt = document.getElementById('timer-text');
+                bar.style.transition = 'none'; bar.style.width = '100%'; setTimeout(() => { bar.style.transition = 'width 30s linear'; bar.style.width = '0%'; }, 50);
+                let timeLeft = 30; txt.innerText = "30s";
+                if(timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => { timeLeft--; txt.innerText = timeLeft + "s"; if(timeLeft <= 0) clearInterval(timerInterval); }, 1000);
+            } else { 
+                document.getElementById('vote-area').style.display='none';
+                document.getElementById('vote-wait-msg').style.display='block';
+            }
+        });
+
+        // AQUI ESTÁ LA VISUAL QUE CORRIGE EL ERROR DEL UNDEFINED
+        socket.on('resultadoRonda', (d) => { 
+            nav('view-round-res'); 
+            document.getElementById('round-content').innerHTML = `
+                <h3>Ganador: ${d.ganador}</h3>
+                <p style="font-style:italic; font-size:20px;">"${d.texto}"</p>
+                <div style="color:var(--accent-toxic); font-weight:bold; margin-top:10px;">+${d.pts} Puntos!</div>
+            `; 
+        });
+        
+        socket.on('finDePartidaTotal', (d) => { 
+            nav('view-results'); 
+            document.getElementById('result-content').innerHTML = `
+                <div style="font-size:60px; margin-bottom:10px;">🏆</div>
+                <h2 style="color:var(--accent-gold); font-size:30px; margin:0;">${d.ganador}</h2>
+                <p style="margin-top:5px; color:#aaa;">Llegó a los ${d.meta} puntos</p>
+                <p style="margin-top:5px; color:var(--accent-toxic); font-weight:bold;">¡Premio: +300 Coins!</p>
+                
+                <div style="margin-top:30px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    <div class="title-card">
+                        <span style="font-size:11px; color:var(--accent-toxic); text-transform:uppercase; font-weight:800; letter-spacing:1px;">💀 El Más Tóxico</span>
+                        <strong style="font-size:18px;">${d.titulos.toxico}</strong>
+                        <span style="font-size:10px; color:#aaa;">Sus rumores ganaron más veces</span>
+                    </div>
+                    
+                    <div class="title-card">
+                        <span style="font-size:11px; color:#ff7675; text-transform:uppercase; font-weight:800; letter-spacing:1px;">🎯 Blanco Fácil</span>
+                        <strong style="font-size:18px;">${d.titulos.victima}</strong>
+                        <span style="font-size:10px; color:#aaa;">Fue la víctima más veces</span>
+                    </div>
+                </div>
+            `; 
+        });
+
+        document.getElementById('logPass').addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); login(); } });
+    </script>
+</body>
+</html>

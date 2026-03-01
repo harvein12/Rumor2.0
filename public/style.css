@@ -1,0 +1,26 @@
+body { background: #222f3e; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+#reloj { font-size: 2rem; color: #ff9f43; font-weight: bold; margin-bottom: 20px; }
+
+/* Pantallas */
+.pantalla { max-width: 600px; margin: 0 auto; }
+
+/* Botones e Inputs */
+input, textarea { width: 90%; padding: 15px; border-radius: 8px; border: none; font-size: 1rem; margin-bottom: 10px; }
+button { width: 100%; padding: 15px; border-radius: 8px; border: none; font-size: 1.2rem; cursor: pointer; background: #10ac84; color: white; font-weight: bold; margin-top: 10px; }
+ul { list-style: none; padding: 0; }
+li { background: #576574; margin: 5px; padding: 10px; border-radius: 5px; }
+
+/* Tarjetas */
+#grid-rumores { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+.tarjeta { 
+    background: #5f27cd; 
+    padding: 20px; 
+    border-radius: 10px; 
+    cursor: pointer; 
+    border: 3px solid transparent;
+    font-size: 1.1rem;
+    transition: transform 0.2s;
+}
+.tarjeta:hover { transform: scale(1.02); background: #a29bfe; }
+.ganadora { background: #feca57; color: black; font-weight: bold; font-size: 1.3rem; animation: popup 0.5s; }
+@keyframes popup { 0% { transform: scale(0); } 100% { transform: scale(1); } }
